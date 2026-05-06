@@ -14,6 +14,7 @@ import BookAppointment from './pages/BookAppointment';
 import TreatmentAware from './pages/TreatmentAware';
 import ReportIssue from './pages/ReportIssue';
 import PostConsultChat from './pages/PostConsultChat';
+import PatientJourney from './pages/PatientJourney';
 import PatientLogin from './pages/patient/PatientLogin';
 import PatientDashboard from './pages/patient/PatientDashboard';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="/treatment-aware" element={<TreatmentAware />} />
         <Route path="/report-issue" element={<ReportIssue />} />
         <Route path="/post-consult-chat" element={<PostConsultChat />} />
+        <Route path="/journey" element={<PatientJourney />} />
         <Route path="/patient/login" element={<PatientLogin />} />
         <Route path="/patient/dashboard" element={<PatientDashboard />} />
         <Route path="/admin/login" element={<AdminLogin />} />

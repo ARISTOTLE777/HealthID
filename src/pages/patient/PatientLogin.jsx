@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePatient } from '../../lib/PatientContext';
-import { useI18n } from '../../lib/i18n';
+
 import { useToast } from '../../components/Toast';
 
 const indianStates = [
@@ -16,7 +16,6 @@ export default function PatientLogin() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', password: '', confirmPassword: '', city: '', state: '' });
   const [error, setError] = useState('');
   const { login, signup } = usePatient();
-  const { t } = useI18n();
   const addToast = useToast();
   const navigate = useNavigate();
 

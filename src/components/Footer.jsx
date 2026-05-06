@@ -1,9 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useI18n } from '../lib/i18n';
 
 export default function Footer() {
   const location = useLocation();
-  const { t } = useI18n();
   if (location.pathname.startsWith('/admin')) return null;
 
   return (
@@ -19,20 +17,20 @@ export default function Footer() {
               </svg>
               <span className="font-display text-lg font-bold">HealthID</span>
             </div>
-            <p className="text-sm text-gray-400">{t('tagline')}</p>
+            <p className="text-sm text-gray-400">See Clearly. Choose Right.</p>
           </div>
 
           {/* Tools */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('tools')}</h4>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Tools</h4>
             <ul className="space-y-2">
-              <li><Link to="/symptom-checker" className="text-sm text-gray-300 hover:text-white transition-colors">{t('symptomChecker')}</Link></li>
-              <li><Link to="/checklist" className="text-sm text-gray-300 hover:text-white transition-colors">{t('checklist')}</Link></li>
-              <li><Link to="/rx-decoder" className="text-sm text-gray-300 hover:text-white transition-colors">{t('rxDecoder')}</Link></li>
-              <li><Link to="/bill-breakdown" className="text-sm text-gray-300 hover:text-white transition-colors">{t('billBreakdown')}</Link></li>
-              <li><Link to="/treatment-aware" className="text-sm text-gray-300 hover:text-white transition-colors">{t('treatmentAware')}</Link></li>
-              <li><Link to="/report-issue" className="text-sm text-gray-300 hover:text-white transition-colors">{t('reportIssue')}</Link></li>
-              <li><Link to="/post-consult-chat" className="text-sm text-gray-300 hover:text-white transition-colors">{t('postConsultChat')}</Link></li>
+              <li><Link to="/symptom-checker" className="text-sm text-gray-300 hover:text-white transition-colors">Symptom Checker</Link></li>
+              <li><Link to="/checklist" className="text-sm text-gray-300 hover:text-white transition-colors">Checklist</Link></li>
+              <li><Link to="/rx-decoder" className="text-sm text-gray-300 hover:text-white transition-colors">Rx Decoder</Link></li>
+              <li><Link to="/bill-breakdown" className="text-sm text-gray-300 hover:text-white transition-colors">Bill Breakdown</Link></li>
+              <li><Link to="/treatment-aware" className="text-sm text-gray-300 hover:text-white transition-colors">Treatment Aware</Link></li>
+              <li><Link to="/report-issue" className="text-sm text-gray-300 hover:text-white transition-colors">Report Issue</Link></li>
+              <li><Link to="/post-consult-chat" className="text-sm text-gray-300 hover:text-white transition-colors">7-Day Chat</Link></li>
             </ul>
           </div>
 
@@ -47,16 +45,16 @@ export default function Footer() {
 
           {/* Login */}
           <div>
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">{t('login')}</h4>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-4">Login</h4>
             <ul className="space-y-2">
-              <li><Link to="/admin/login" className="text-sm text-gray-300 hover:text-white transition-colors">{t('doctorPortal')}</Link></li>
-              <li><Link to="/patient/login" className="text-sm text-gray-300 hover:text-white transition-colors">{t('patientPortal')}</Link></li>
+              <li><Link to="/admin/login" className="text-sm text-gray-300 hover:text-white transition-colors">Doctor Portal</Link></li>
+              <li><Link to="/patient/login" className="text-sm text-gray-300 hover:text-white transition-colors">Patient Portal</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-gray-700">
-          <p className="text-xs text-gray-500 text-center">HealthID — {t('footerCopy')}</p>
+          <p className="text-xs text-gray-500 text-center">HealthID — Built for patients, verified by evaluators</p>
         </div>
       </div>
     </footer>

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { usePatient } from '../../lib/PatientContext';
-import { useI18n } from '../../lib/i18n';
+
 import { useToast } from '../../components/Toast';
 import ImageUploader from '../../components/ImageUploader';
 
 export default function PatientDashboard() {
   const { patient, isLoggedIn, logout, getVault, addDocument, deleteDocument } = usePatient();
-  const { t } = useI18n();
+
   const addToast = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [showUpload, setShowUpload] = useState(false);
@@ -47,8 +47,8 @@ export default function PatientDashboard() {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { id: 'vault', label: t('documentVault'), icon: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4' },
-    { id: 'appointments', label: t('myAppointments'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+    { id: 'vault', label: 'My Health Vault', icon: 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4' },
+    { id: 'appointments', label: 'My Appointments', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
   ];
 
   const docTypeIcon = (type) => {
@@ -62,11 +62,11 @@ export default function PatientDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="font-display text-2xl font-bold text-text-primary">{t('welcomeBack')}, {patient.name.split(' ')[0]}</h1>
+          <h1 className="font-display text-2xl font-bold text-text-primary">Welcome back, {patient.name.split(' ')[0]}</h1>
           <p className="text-sm text-text-muted mt-1">Manage your health records, appointments, and documents</p>
         </div>
         <button onClick={logout} className="px-4 py-2 text-sm font-medium text-text-secondary border border-border rounded-lg hover:bg-surface transition-colors">
-          {t('logout')}
+          Logout
         </button>
       </div>
 
@@ -134,13 +134,13 @@ export default function PatientDashboard() {
       {activeTab === 'vault' && (
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-text-primary">{t('documentVault')}</h2>
+            <h2 className="font-display text-lg font-bold text-text-primary">My Health Vault</h2>
             <button onClick={() => setShowUpload(!showUpload)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              {t('upload')} Document
+              Upload Document
             </button>
           </div>
 
@@ -176,7 +176,7 @@ export default function PatientDashboard() {
                   Save to Vault
                 </button>
                 <button type="button" onClick={() => setShowUpload(false)} className="px-6 py-2.5 border border-border text-text-secondary text-sm font-medium rounded-lg hover:bg-surface transition-colors">
-                  {t('cancel')}
+                  Cancel
                 </button>
               </div>
             </form>
