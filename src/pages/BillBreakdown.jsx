@@ -2,7 +2,7 @@ import { useState } from 'react';
 import ImageUploader from '../components/ImageUploader';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
-import { callAI, callAIWithImage, SYSTEM_PROMPTS, buildBillPrompt } from '../lib/ai';
+import { getFeatureAIResponse, getFeatureAIResponseWithImage, SYSTEM_PROMPTS, buildBillPrompt } from '../lib/ai';
 import { fallbackResponses } from '../lib/fallbacks';
 import jsPDF from 'jspdf';
 
@@ -22,18 +22,40 @@ export default function BillBreakdown() {
     setResult('');
     try {
       let response;
+      let source = 'ai';
+      let fallbackReason = '';
       if (inputMode === 'image' && imageData) {
         const imagePrompt = bill.trim()
           ? `This is an image of a medical bill. Additional context: ${bill}. Read every charge from this bill image. For each line item: explain what it is in plain language, whether it is reasonable, and flag anything the patient should question. End with a list of questions to ask the billing department.`
           : 'This is an image of a medical bill. Read every charge from this bill image. For each line item: explain what it is in plain language, whether it is reasonable, and flag anything the patient should question. End with a list of questions to ask the billing department.';
-        response = await callAIWithImage(SYSTEM_PROMPTS.billBreakdown, imagePrompt, imageData);
+        const result = await getFeatureAIResponseWithImage({
+          systemPrompt: SYSTEM_PROMPTS.billBreakdown,
+          textPrompt: imagePrompt,
+          imageData,
+          fallbackResponse: fallbackResponses.billBreakdown,
+          minimumLength: 180,
+          relevanceTerms: ['charge', 'reasonable', 'question', 'bill'],
+        });
+        response = result.content;
+        source = result.source;
+        fallbackReason = result.reason || '';
       } else {
-        response = await callAI(SYSTEM_PROMPTS.billBreakdown, buildBillPrompt(bill));
+        const result = await getFeatureAIResponse({
+          systemPrompt: SYSTEM_PROMPTS.billBreakdown,
+          userPrompt: buildBillPrompt(bill),
+          fallbackResponse: fallbackResponses.billBreakdown,
+          minimumLength: 180,
+          relevanceTerms: ['charge', 'reasonable', 'question', 'bill'],
+        });
+        response = result.content;
+        source = result.source;
+        fallbackReason = result.reason || '';
       }
       setResult(response);
-    } catch {
-      setResult(fallbackResponses.billBreakdown);
-      addToast('Using cached response', 'warning');
+      if (source === 'fallback') {
+        console.warn('Bill fallback triggered:', fallbackReason);
+        addToast('Using offline bill guidance', 'warning');
+      }
     } finally {
       setLoading(false);
     }

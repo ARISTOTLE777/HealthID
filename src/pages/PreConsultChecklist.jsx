@@ -3,7 +3,7 @@ import UrgencySelector from '../components/UrgencySelector';
 import ChecklistItem from '../components/ChecklistItem';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
-import { callAI, SYSTEM_PROMPTS, buildChecklistPrompt } from '../lib/ai';
+import { getFeatureAIResponse, SYSTEM_PROMPTS, buildChecklistPrompt } from '../lib/ai';
 import { fallbackResponses } from '../lib/fallbacks';
 import { getChecklistProgress, setChecklistProgress } from '../lib/storage';
 import jsPDF from 'jspdf';
@@ -47,8 +47,14 @@ export default function PreConsultChecklist() {
     setQuestions([]);
     setChecked([]);
     try {
-      const response = await callAI(SYSTEM_PROMPTS.checklist, buildChecklistPrompt(urgency, condition));
-      const parsed = parseQuestions(response);
+      const { content, source } = await getFeatureAIResponse({
+        systemPrompt: SYSTEM_PROMPTS.checklist,
+        userPrompt: buildChecklistPrompt(urgency, condition),
+        fallbackResponse: () => fallbackResponses.checklist(urgency, condition),
+        minimumLength: 180,
+        relevanceTerms: ['1.', '2.', 'doctor', 'condition'],
+      });
+      const parsed = parseQuestions(content);
       if (parsed.length >= 5) {
         setQuestions(parsed);
         setChecked(new Array(parsed.length).fill(false));
@@ -57,11 +63,9 @@ export default function PreConsultChecklist() {
         setQuestions(fallback);
         setChecked(new Array(fallback.length).fill(false));
       }
-    } catch {
-      const fallback = parseQuestions(fallbackResponses.checklist(urgency, condition));
-      setQuestions(fallback);
-      setChecked(new Array(fallback.length).fill(false));
-      addToast('Using offline checklist — for best results, add a Gemini API key', 'warning');
+      if (source === 'fallback') {
+        addToast('Using offline checklist — for best results, add a Gemini API key', 'warning');
+      }
     } finally {
       setLoading(false);
     }

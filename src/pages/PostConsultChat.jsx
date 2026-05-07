@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '../components/Toast';
-import { callAI } from '../lib/ai';
+import { getFeatureAIResponse } from '../lib/ai';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function PostConsultChat() {
@@ -70,14 +70,6 @@ Rules:
     const prompt = `Conversation so far:\n${history}\n\nPatient's latest message: ${userMsg.content}\n\nRespond helpfully and concisely. If the patient reports worsening symptoms, urgently advise contacting their doctor.`;
 
     try {
-      const response = await callAI(SYSTEM_PROMPT, prompt);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: response,
-        timestamp: new Date(),
-      }]);
-    } catch {
-      // Offline fallback — contextual
       const lower = userMsg.content.toLowerCase();
       let fallback = '';
 
@@ -93,12 +85,19 @@ Rules:
         fallback = `Thank you for your question. Here are some general post-consultation guidelines:\n\n**Recovery tips:**\n- Take rest as advised by your doctor\n- Complete all prescribed medications\n- Monitor your symptoms and note any changes\n- Stay hydrated and maintain a balanced diet\n\n**Important reminders:**\n- Keep all follow-up appointments\n- Do not self-medicate or change dosages\n- Contact your doctor if symptoms worsen\n\nIs there something specific about your treatment or recovery I can help with?`;
       }
 
+      const { content, source } = await getFeatureAIResponse({
+        systemPrompt: SYSTEM_PROMPT,
+        userPrompt: prompt,
+        fallbackResponse: fallback,
+        minimumLength: 120,
+        relevanceTerms: ['doctor', 'follow-up', 'symptoms', 'medication'],
+      });
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: fallback,
+        content,
         timestamp: new Date(),
       }]);
-      addToast('Using offline guidance mode', 'warning');
+      if (source === 'fallback') addToast('Using offline guidance mode', 'warning');
     } finally {
       setLoading(false);
     }

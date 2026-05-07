@@ -1,194 +1,91 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import axios from 'axios';
-
-// API Keys
-const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
-
-// Check which providers are available
-const hasGemini = GEMINI_KEY && GEMINI_KEY !== 'your_gemini_key_here';
-const hasClaude = ANTHROPIC_KEY && ANTHROPIC_KEY !== 'your_key_here';
-
-// Gemini client
-let genAI = null;
-if (hasGemini) {
-  genAI = new GoogleGenerativeAI(GEMINI_KEY);
-}
-
-// Model preference order — flash-lite has a more generous free-tier quota
-const GEMINI_MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-
-// ── Retry helper ──────────────────────────────────────
-
-async function withRetry(fn, maxRetries = 2) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const is429 = err?.message?.includes('429') || err?.status === 429;
-      if (is429 && attempt < maxRetries) {
-        // Extract retry delay from error if available, otherwise use exponential backoff
-        const retryMatch = err.message?.match(/retry in (\d+)/i);
-        const waitSec = retryMatch ? Math.min(parseInt(retryMatch[1]), 10) : (attempt + 1) * 3;
-        console.warn(`Rate limited. Retrying in ${waitSec}s (attempt ${attempt + 1}/${maxRetries})...`);
-        await new Promise(r => setTimeout(r, waitSec * 1000));
-        continue;
-      }
-      throw err;
-    }
+async function requestServerAI(endpoint, payload) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `AI request failed (${res.status})`);
   }
-}
-
-// ── Gemini calls ──────────────────────────────────────
-
-async function callGemini(systemPrompt, userPrompt) {
-  let lastErr = null;
-  for (const modelName of GEMINI_MODELS) {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemPrompt,
-      });
-      const result = await model.generateContent(userPrompt);
-      return result.response.text();
-    } catch (err) {
-      console.warn(`Gemini ${modelName} failed:`, err.message?.substring(0, 120));
-      lastErr = err;
-      // If it's a quota error, try the next model
-      if (err.message?.includes('429') || err.message?.includes('quota')) {
-        continue;
-      }
-      // For non-quota errors, throw immediately
-      throw err;
-    }
+  if (!data?.text) {
+    throw new Error('AI response was empty');
   }
-  throw lastErr;
+  return data.text;
 }
-
-async function callGeminiWithImage(systemPrompt, textPrompt, imageData) {
-  let lastErr = null;
-  for (const modelName of GEMINI_MODELS) {
-    try {
-      const model = genAI.getGenerativeModel({
-        model: modelName,
-        systemInstruction: systemPrompt,
-      });
-      const imagePart = {
-        inlineData: {
-          data: imageData.base64,
-          mimeType: imageData.mediaType,
-        },
-      };
-      const result = await model.generateContent([textPrompt, imagePart]);
-      return result.response.text();
-    } catch (err) {
-      console.warn(`Gemini ${modelName} vision failed:`, err.message?.substring(0, 120));
-      lastErr = err;
-      if (err.message?.includes('429') || err.message?.includes('quota')) {
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw lastErr;
-}
-
-// ── Claude calls ──────────────────────────────────────
-
-async function callClaudeAPI(systemPrompt, userPrompt) {
-  const response = await axios.post(
-    'https://api.anthropic.com/v1/messages',
-    {
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-    }
-  );
-  return response.data.content[0].text;
-}
-
-async function callClaudeWithImageAPI(systemPrompt, textPrompt, imageData) {
-  const content = [];
-  if (imageData) {
-    content.push({
-      type: 'image',
-      source: { type: 'base64', media_type: imageData.mediaType, data: imageData.base64 },
-    });
-  }
-  content.push({ type: 'text', text: textPrompt });
-  const response = await axios.post(
-    'https://api.anthropic.com/v1/messages',
-    {
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content }],
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-    }
-  );
-  return response.data.content[0].text;
-}
-
-// ── Unified interface (tries Gemini → Claude → throws) ──
 
 export async function callAI(systemPrompt, userPrompt) {
-  if (hasGemini) {
-    try {
-      return await withRetry(() => callGemini(systemPrompt, userPrompt));
-    } catch (err) {
-      console.warn('All Gemini models failed, trying Claude:', err.message?.substring(0, 100));
-    }
-  }
-  if (hasClaude) {
-    try {
-      return await callClaudeAPI(systemPrompt, userPrompt);
-    } catch (err) {
-      console.warn('Claude failed:', err.message);
-    }
-  }
-  throw new Error('No AI provider available. Please set VITE_GEMINI_API_KEY or VITE_ANTHROPIC_API_KEY in your .env file.');
+  return requestServerAI('/api/ai', { systemPrompt, userPrompt });
 }
 
 export async function callAIWithImage(systemPrompt, textPrompt, imageData) {
-  if (hasGemini) {
-    try {
-      return await withRetry(() => callGeminiWithImage(systemPrompt, textPrompt, imageData));
-    } catch (err) {
-      console.warn('All Gemini vision models failed, trying Claude:', err.message?.substring(0, 100));
+  return requestServerAI('/api/ai-image', { systemPrompt, textPrompt, imageData });
+}
+
+function normalizeText(value) {
+  return (value || '').replace(/\s+/g, ' ').trim();
+}
+
+function isLowQualityResponse(response, minimumLength = 120) {
+  const cleaned = normalizeText(response);
+  if (!cleaned) return true;
+  if (cleaned.length < minimumLength) return true;
+  // Very short bullet lists with little context are usually low-value outputs.
+  const bulletCount = (response.match(/^\s*[-*]\s+/gm) || []).length;
+  return bulletCount > 0 && cleaned.length < minimumLength + 40;
+}
+
+function isRelevantResponse(response, relevanceTerms = []) {
+  if (!relevanceTerms.length) return true;
+  const lower = response.toLowerCase();
+  return relevanceTerms.some((term) => lower.includes(term.toLowerCase()));
+}
+
+export async function getFeatureAIResponse({
+  systemPrompt,
+  userPrompt,
+  fallbackResponse,
+  minimumLength = 120,
+  relevanceTerms = [],
+  validateResponse = true,
+}) {
+  try {
+    const response = await callAI(systemPrompt, userPrompt);
+    if (validateResponse && (isLowQualityResponse(response, minimumLength) || !isRelevantResponse(response, relevanceTerms))) {
+      throw new Error('Low-quality or irrelevant AI output');
     }
+    return { content: response, source: 'ai' };
+  } catch (err) {
+    const fallback = typeof fallbackResponse === 'function' ? fallbackResponse() : fallbackResponse;
+    return { content: fallback, source: 'fallback', reason: err?.message || 'unknown_error' };
   }
-  if (hasClaude) {
-    try {
-      return await callClaudeWithImageAPI(systemPrompt, textPrompt, imageData);
-    } catch (err) {
-      console.warn('Claude vision failed:', err.message);
+}
+
+export async function getFeatureAIResponseWithImage({
+  systemPrompt,
+  textPrompt,
+  imageData,
+  fallbackResponse,
+  minimumLength = 140,
+  relevanceTerms = [],
+  validateResponse = true,
+}) {
+  try {
+    const response = await callAIWithImage(systemPrompt, textPrompt, imageData);
+    if (validateResponse && (isLowQualityResponse(response, minimumLength) || !isRelevantResponse(response, relevanceTerms))) {
+      throw new Error('Low-quality or irrelevant AI image output');
     }
+    return { content: response, source: 'ai' };
+  } catch (err) {
+    const fallback = typeof fallbackResponse === 'function' ? fallbackResponse() : fallbackResponse;
+    return { content: fallback, source: 'fallback', reason: err?.message || 'unknown_error' };
   }
-  throw new Error('No AI provider available for image analysis.');
 }
 
 // ── Provider status (for UI feedback) ──
 
 export function getAIProvider() {
-  if (hasGemini) return 'Gemini';
-  if (hasClaude) return 'Claude';
-  return null;
+  return 'Gemini (secure server)';
 }
 
 // ── System prompts ──

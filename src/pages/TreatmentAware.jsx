@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../components/Toast';
-import { callAI, SYSTEM_PROMPTS } from '../lib/ai';
+import { getFeatureAIResponse } from '../lib/ai';
 import SkeletonLoader from '../components/SkeletonLoader';
 
 export default function TreatmentAware() {
@@ -35,21 +35,14 @@ Provide:
 
 Be specific to their symptoms. Use simple language.`;
 
-    try {
-      const response = await callAI(
-        'You are HealthID Treatment Aware, a medical literacy tool. You help patients understand whether they need a doctor visit, medication, or just rest. You do NOT diagnose. Always include when to see a doctor.',
-        prompt
-      );
-      setResult(response);
-    } catch {
-      // Smart fallback based on severity
-      const approaches = {
-        mild: { approach: 'REST & HOME CARE', advice: 'Based on the mild severity of your symptoms, rest and home care may be the appropriate first step.' },
-        moderate: { approach: 'MEDICATION', advice: 'Your moderate symptoms may benefit from appropriate medication. Consult a pharmacist before taking any medicine.' },
-        severe: { approach: 'DOCTOR VISIT', advice: 'Given the severity of your symptoms, a professional medical assessment is recommended.' },
-      };
-      const fb = approaches[form.severity] || approaches.moderate;
-      setResult(`**Recommended Approach: ${fb.approach}**
+    // Smart fallback based on severity
+    const approaches = {
+      mild: { approach: 'REST & HOME CARE', advice: 'Based on the mild severity of your symptoms, rest and home care may be the appropriate first step.' },
+      moderate: { approach: 'MEDICATION', advice: 'Your moderate symptoms may benefit from appropriate medication. Consult a pharmacist before taking any medicine.' },
+      severe: { approach: 'DOCTOR VISIT', advice: 'Given the severity of your symptoms, a professional medical assessment is recommended.' },
+    };
+    const fb = approaches[form.severity] || approaches.moderate;
+    const fallbackResponse = `**Recommended Approach: ${fb.approach}**
 
 ${fb.advice}
 
@@ -72,8 +65,17 @@ ${fb.advice}
 - Loss of consciousness
 - Uncontrolled bleeding
 
-**Important:** This is a general guidance tool. When in doubt, always consult a qualified medical professional.`);
-      addToast('Using offline guidance', 'warning');
+**Important:** This is a general guidance tool. When in doubt, always consult a qualified medical professional.`;
+    try {
+      const { content, source } = await getFeatureAIResponse({
+        systemPrompt: 'You are HealthID Treatment Aware, a medical literacy tool. You help patients understand whether they need a doctor visit, medication, or just rest. You do NOT diagnose. Always include when to see a doctor.',
+        userPrompt: prompt,
+        fallbackResponse,
+        minimumLength: 170,
+        relevanceTerms: ['recommended approach', 'warning signs', 'when to'],
+      });
+      setResult(content);
+      if (source === 'fallback') addToast('Using offline guidance', 'warning');
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import ImageUploader from '../components/ImageUploader';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
-import { callAI, callAIWithImage, SYSTEM_PROMPTS, buildPrescriptionPrompt } from '../lib/ai';
+import { getFeatureAIResponse, getFeatureAIResponseWithImage, SYSTEM_PROMPTS, buildPrescriptionPrompt } from '../lib/ai';
 import { fallbackResponses } from '../lib/fallbacks';
 import jsPDF from 'jspdf';
 
@@ -23,18 +23,41 @@ export default function PrescriptionDecoder() {
     setResult('');
     try {
       let response;
+      let source = 'ai';
+      let fallbackReason = '';
       if (inputMode === 'image' && imageData) {
         const imagePrompt = prescription.trim()
           ? `This is an image of a medical prescription. Additional context from patient: ${prescription}. Read every medicine from this prescription image and for each one: explain what it is, why it is likely prescribed, how to take it correctly, common side effects, and any warnings. Use very simple language.`
           : 'This is an image of a medical prescription. Read every medicine from this prescription image and for each one: explain what it is, why it is likely prescribed, how to take it correctly, common side effects, and any warnings. Use very simple language. End with the disclaimer: This explanation is for understanding only. Always follow your doctor\'s specific instructions.';
-        response = await callAIWithImage(SYSTEM_PROMPTS.prescriptionDecoder, imagePrompt, imageData);
+        const result = await getFeatureAIResponseWithImage({
+          systemPrompt: SYSTEM_PROMPTS.prescriptionDecoder,
+          textPrompt: imagePrompt,
+          imageData,
+          fallbackResponse: fallbackResponses.prescriptionDecoder,
+          minimumLength: 80,
+          validateResponse: false,
+        });
+        response = result.content;
+        source = result.source;
+        fallbackReason = result.reason || '';
       } else {
-        response = await callAI(SYSTEM_PROMPTS.prescriptionDecoder, buildPrescriptionPrompt(prescription));
+        const result = await getFeatureAIResponse({
+          systemPrompt: SYSTEM_PROMPTS.prescriptionDecoder,
+          userPrompt: buildPrescriptionPrompt(prescription),
+          fallbackResponse: fallbackResponses.prescriptionDecoder,
+          minimumLength: 80,
+          validateResponse: false,
+        });
+        response = result.content;
+        source = result.source;
+        fallbackReason = result.reason || '';
       }
       setResult(response);
-    } catch {
-      setResult(fallbackResponses.prescriptionDecoder);
-      addToast('Using cached response', 'warning');
+      if (source === 'fallback') {
+        // Helps debugging key/model issues in browser console.
+        console.warn('Prescription fallback triggered:', fallbackReason);
+        addToast('Using offline prescription guidance', 'warning');
+      }
     } finally {
       setLoading(false);
     }

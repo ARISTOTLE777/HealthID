@@ -4,7 +4,7 @@ import UrgencySelector from '../components/UrgencySelector';
 import AIResponseCard from '../components/AIResponseCard';
 import SkeletonLoader from '../components/SkeletonLoader';
 import { useToast } from '../components/Toast';
-import { callAI, SYSTEM_PROMPTS, buildSymptomPrompt } from '../lib/ai';
+import { getFeatureAIResponse, SYSTEM_PROMPTS, buildSymptomPrompt } from '../lib/ai';
 import { fallbackResponses } from '../lib/fallbacks';
 import { specialistTypes } from '../lib/mockData';
 
@@ -23,11 +23,17 @@ export default function SymptomChecker() {
     setLoading(true);
     setResult('');
     try {
-      const response = await callAI(SYSTEM_PROMPTS.symptomChecker, buildSymptomPrompt(urgency, symptoms));
-      setResult(response);
-    } catch {
-      setResult(fallbackResponses.symptomChecker(urgency, symptoms));
-      addToast('Using offline recommendation — for best results, add a Gemini API key', 'warning');
+      const { content, source } = await getFeatureAIResponse({
+        systemPrompt: SYSTEM_PROMPTS.symptomChecker,
+        userPrompt: buildSymptomPrompt(urgency, symptoms),
+        fallbackResponse: () => fallbackResponses.symptomChecker(urgency, symptoms),
+        minimumLength: 180,
+        relevanceTerms: ['specialist', 'appointment', 'red flags', 'emergency'],
+      });
+      setResult(content);
+      if (source === 'fallback') {
+        addToast('Using offline recommendation — for best results, add a Gemini API key', 'warning');
+      }
     } finally {
       setLoading(false);
     }
