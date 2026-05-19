@@ -53,7 +53,7 @@ export default function PatientLogin() {
             </svg>
           </div>
           <h1 className="font-display text-2xl font-bold text-text-primary">
-            {mode === 'login' ? t('patientLogin') : 'Create Patient Account'}
+            {mode === 'login' ? 'Patient Login' : 'Create Patient Account'}
           </h1>
           <p className="text-sm text-text-muted mt-1">
             {mode === 'login' ? 'Access your health records, appointments, and saved documents' : 'Join HealthID to manage your health journey'}
